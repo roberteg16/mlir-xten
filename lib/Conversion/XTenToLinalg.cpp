@@ -20,11 +20,12 @@
 #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
-#include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/Dialect/Tensor/Utils/Utils.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
@@ -63,7 +64,7 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
 
   Value padValue = rewriter.create<arith::ConstantOp>(loc, padAttr);
 
-  return linalg::PadTensorOp::createPadScalarOp(
+  return tensor::createPadScalarOp(
              RankedTensorType::get(paddedShape, inputETy), input, padValue,
              lowIndices, highIndices, /*nofold=*/false, loc, rewriter)
       .result();
@@ -831,13 +832,6 @@ public:
   XTenToLinalgPass() = default;
   XTenToLinalgPass(const XTenToLinalgPass &pass){};
 
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-    registry.insert<memref::MemRefDialect>();
-    registry.insert<linalg::LinalgDialect>();
-    registry
-        .insert<Torch::TorchDialect, TorchConversion::TorchConversionDialect>();
-  }
-
   void runOnOperation() override {
 
     auto module = getOperation();
@@ -846,7 +840,7 @@ public:
     TypeConverter typeConverter;
 
     // tablegen patterns
-    OwningRewritePatternList patterns(context);
+    RewritePatternSet patterns(context);
 
     patterns.insert<XTenAddOpConversion, XTenMulOpConversion,
                     XTenMMOpConversion, XTenConv2dOpConversion,

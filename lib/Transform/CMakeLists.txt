@@ -9,7 +9,7 @@ add_mlir_library(XTenTransformPasses
   ATenDialectOpStats.cpp
   ATenLoweringPass.cpp
   ATenOpReport.cpp
-  LinalgToDsePass.cpp
+  ATenVisualGraph.cpp
   LowerToLibATenPass.cpp
   Passes.cpp
 
@@ -17,6 +17,5 @@ add_mlir_library(XTenTransformPasses
   XTenTransformIncGen
 
   LINK_LIBS
-  MLIR
   XTenDialect
   )
