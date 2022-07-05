@@ -28,6 +28,17 @@
 	    ]		
 	},
 	{
+	    "name" : "linalg.lrelu_2d_nchw",
+	    "properties" : [
+		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
+		["Attributes.Alpha.type", "Numerical type of each alpha number", "string"],
+		["Attributes.Alpha.Bytes", "Size of alpha in bytes", "long"],
+		["Attributes.Alpha", "Value of alpha", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for LReLU engine", "long"]  		
+	    ]		
+	},
+	{
 	    "name" : "torch.aten.leaky_relu",
 	    "properties" : [
 		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
@@ -264,6 +275,23 @@
 		["Storage.Bytes", "Total storage required for Slicer engine", "long"]		
 	    ]
 	},		
+	{
+	    "name" : "linalg.conv_2d_nchw_fchw",
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
+		["Attributes.padding", "Value of padding", "string"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],		
+		["Storage.Bytes", "Total storage required for this engine", "string"] 
+	    ]
+	},
 	{
 	    "name" : "xten.conv2d",
 	    "properties" : [

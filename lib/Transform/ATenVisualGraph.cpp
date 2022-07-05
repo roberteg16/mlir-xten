@@ -233,8 +233,11 @@ private:
   std::unordered_map<std::string, int> opTypes;
   std::unordered_map<std::string, llvm::json::Object> opTypeToProperties;
 
-  std::map<std::string, std::vector<Operation *>> layerToOps;
   std::unordered_map<int, std::vector<std::string>> designToLayers;
+  // for each op, look at its parent. If it's a linalg.fused, then there's 
+  // an entry in the map, mapping the linalg.fused to its components.
+  // Otherwise the op maps to a singleton vector with itself.
+  std::map<Operation*, std::vector<Operation *>> layerByContainer;
 
   // map of ops whose inputs come from other ops
   llvm::MapVector<Operation *, llvm::MapVector<Operation *, unsigned>>
@@ -272,7 +275,10 @@ private:
     StringRef sr(json_model_str);
 
     auto jsonModel = llvm::json::parse(sr);
-    assert(jsonModel);
+    if (!jsonModel) {
+      llvm::outs() << jsonModel.takeError();
+    }
+    assert(jsonModel && "Cannot parse JSON file of supported operators");
     auto operators = jsonModel->getAsObject();
     if (!operators)
       return;
@@ -312,7 +318,7 @@ private:
     opToName.clear();
     opToId.clear();
     opTypes.clear();
-    layerToOps.clear();
+    layerByContainer.clear();
     designToLayers.clear();
     connsInToOutMap.clear();
     connsOutToInMap.clear();
@@ -723,34 +729,7 @@ private:
   }
 
   Value getInputFromErasedPtr(Operation *op) {
-    Value opInput;
-
-    if (auto op2 = dyn_cast<Torch::AtenConv2dOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = dyn_cast<Torch::AtenReluOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = dyn_cast<Torch::AtenAddTensorOp>(op)) {
-      opInput = getInput(op2); // TODO: add Tensor technically has two inputs
-    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
-      opInput = getInput(op2);
-    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
-      opInput = getInput(op2);
-    } else {
-      opInput = 0;
-    }
-    // TODO: expand switch table for more ops
-
-    return opInput;
+    return op->getOperand(0);
   }
 
   void fillPortProperties(Operation *op, bool isInput,
@@ -789,11 +768,12 @@ private:
       uint64_t total_inputs = 0;
 
       // TODO: for operators with multiple outputs, will need to go over them
-      Type resultTy =
-          (inputOpToIFMValue.find(op) != inputOpToIFMValue.end() and isInput
+      auto resultVal = inputOpToIFMValue.find(op) != inputOpToIFMValue.end() && isInput
                ? inputOpToIFMValue[op]
-               : op->getResult(0))
-              .getType();
+               : op->getResult(0);
+      resultVal.dump();
+      op->dump();
+      Type resultTy = resultVal.getType();
       Torch::BaseTensorType sizeResultTy =
           resultTy.dyn_cast<Torch::BaseTensorType>();
       if (!sizeResultTy)
@@ -880,14 +860,20 @@ private:
   llvm::json::Array emitJSONLayers() {
     llvm::json::Array layersArray;
 
-    for (auto const &layer_pair : layerToOps) {
+    for (auto const &layer_pair : layerByContainer) {
       llvm::json::Object layerObject;
       llvm::json::Object propertyObject;
       llvm::json::Array propertiesArray;
       llvm::json::Array operatorsArray;
 
-      auto layer_name = layer_pair.first;
       auto layer_ops = layer_pair.second;
+
+      std::string layer_name = "";
+      for (auto op : layer_ops) {
+        layer_name += opToName[op].first + "_";
+      }
+      layer_name.pop_back();
+
       int layer_ops_count = layer_ops.size();
 
       propertyObject["name"] = "Operator Count";
@@ -1039,27 +1025,31 @@ public:
     unsigned currentOp = 0;
     unsigned currPortId = 0;
     forward.walk([&](Operation *op) {
-      if (!opIsValid(op))
+      if (!opIsValid(op)) {
         return;
-
-      auto attr_l = op->getAttrOfType<StringAttr>("layer_name");
-      auto attr_n = op->getAttrOfType<StringAttr>("name");
-      // assumes layer_name is given to all nodes, might support inferring
-      // layers later
-      if (!attr_l && !attr_n)
-        return;
-      auto attr = attr_l ? attr_l : attr_n;
-
+      }
+      
       auto op_str = getOperationNameStr(op);
-      auto layer_name = attr.getValue().str();
-      layerToOps[layer_name].push_back(op);
-      designToLayers[currentDesign].push_back(layer_name);
+      
+      Operation* layerKey = op;
+      if (auto container = dyn_cast<linalg::FusedOp>(op->getParentOp()))
+          layerKey = container;
+      layerByContainer[layerKey].push_back(op);
+      designToLayers[currentDesign].push_back(""); // todo just a counter
 
       opToName[op] = std::make_pair(
-          op_str + "_" + std::to_string(opTypes[op_str]), layer_name);
+          op_str + "_" + std::to_string(opTypes[op_str]), ""); // todo remove the pair
       opToId[op] = currentOp;
 
-      for (auto argOp_ref : op->getOperands()) {
+      for (Value argOp_ref : op->getOperands()) {
+        if (auto blockArg = argOp_ref.dyn_cast<mlir::BlockArgument>()) {
+          if (auto fused = dyn_cast<linalg::FusedOp>(blockArg.getOwner()->getParentOp())) {
+            // then this is a captured variable, need to translate it back.
+            argOp_ref = fused.getOperand(blockArg.getArgNumber());
+            argOp_ref.dump();
+          }
+        }
+
         if (auto argOp = argOp_ref.getDefiningOp()) {
           auto vectorArgOps = vectorValidArgOps(argOp, op);
           for (auto argOp : vectorArgOps) {

@@ -1,0 +1,22 @@
+{
+  "schema_version": {
+    "major": "1",
+    "minor": "0",
+    "patch": "0"
+  },
+  "generation": {
+    "source": "flexml",
+    "PID": "159742",
+    "timestamp": "1631219450124"
+  },
+  "files": [
+    {
+      "name": "original.json",
+      "type": "FLEXML_ORG_GRAPH"
+    },
+    {
+      "name": "fused.json",
+      "type": "FLEXML_FUSED_GRAPH"
+    }
+  ]
+}

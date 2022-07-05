@@ -1,0 +1,103 @@
+{
+    "flexml_graph_metadata": {
+      "connections": [
+        {
+          "from_port_id": "0",
+          "id": "0",
+          "to_port_id": "8"
+        },
+        {
+          "from_port_id": "1",
+          "id": "1",
+          "to_port_id": "9"
+        }
+      ],
+      "designs": [
+        {
+          "name": "design 1",
+          "properties": [
+            {
+              "name": "Layer Count",
+              "tooltip": "Total number of layers in design",
+              "type": "int",
+              "value": "2"
+            }
+          ]
+        }
+      ],
+      "layers": [
+        {
+          "design_name": "design 1",
+          "name": "data",
+          "operators": [
+            {
+              "id": 0,
+              "name": "data",
+              "ports": [
+                {
+                  "direction": "out",
+                  "id": "0",
+                  "name": "out_0"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "design_name": "design 1",
+          "name": "conv2d0_relu0",
+          "operators": [
+            {
+              "id": 1,
+              "name": "conv2d0",
+              "ports": [
+                {
+                  "direction": "in",
+                  "id": "8",
+                  "name": "in_0",
+                  "properties": [
+                    {
+                      "name": "Inputs.IFMs.Tensor",
+                      "tooltip": "Dimensions of Input",
+                      "type": "string",
+                      "value": "L2"
+                    }
+                  ]
+                },
+                {
+                  "direction": "out",
+                  "id": "1",
+                  "name": "out_0"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "relu0",
+              "ports": [
+                {
+                  "direction": "in",
+                  "id": "9",
+                  "name": "in_0",
+                  "properties": [
+                    {
+                      "name": "Inputs.IFMs.Tensor",
+                      "tooltip": "Dimensions of Input",
+                      "type": "string",
+                      "value": "fused"
+                    }
+                  ]
+                },
+                {
+                  "direction": "out",
+                  "id": "2",
+                  "name": "out_0"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+  
