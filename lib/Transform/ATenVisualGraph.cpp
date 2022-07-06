@@ -771,8 +771,6 @@ private:
       auto resultVal = inputOpToIFMValue.find(op) != inputOpToIFMValue.end() && isInput
                ? inputOpToIFMValue[op]
                : op->getResult(0);
-      resultVal.dump();
-      op->dump();
       Type resultTy = resultVal.getType();
       Torch::BaseTensorType sizeResultTy =
           resultTy.dyn_cast<Torch::BaseTensorType>();
@@ -1023,6 +1021,8 @@ public:
     clearAllDataStructures();
 
     unsigned currentOp = 0;
+
+    // todo rename, this is properly a connection ID
     unsigned currPortId = 0;
     forward.walk([&](Operation *op) {
       if (!opIsValid(op)) {
