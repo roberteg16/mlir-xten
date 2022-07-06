@@ -910,6 +910,46 @@ private:
     return layersArray;
   }
 
+  llvm::json::Object emitJSONLayers() {
+    llvm::json::Object layerObject;
+    llvm::json::Object propertyObject;
+    llvm::json::Array propertiesArray;
+    llvm::json::Array operatorsArray;
+
+
+    int layer_ops_count = layer_ops.size();
+
+    propertyObject["name"] = "Operator Count";
+    propertyObject["tooltip"] =
+        "Total number of ATen operators in layer to be visualized";
+    propertyObject["type"] = "int";
+    propertyObject["value"] = "1";
+
+    layerObject["name"] = "input";
+    layerObject["design_name"] = "design " + std::to_string(currentDesign);
+
+    propertiesArray.push_back(llvm::json::Value(std::move(propertyObject)));
+    layerObject["properties"] = llvm::json::Value(std::move(propertiesArray));
+      llvm::json::Object operatorObject;
+      auto op_id_str = opToName[op].first;
+
+      operatorObject["id"] = "inputOp";
+      operatorObject["name"] = "inputOp";
+      operatorObject["operator_type"] = "inputOp";
+
+      auto propertiesArray = fillProperties(op);
+      operatorObject["properties"] = llvm::json::Value(llvm::json::Array());
+
+      auto portsArray = emitJSONLayerOpPorts(op);
+      operatorObject["ports"] = llvm::json::Value(std::move(portsArray));
+
+      operatorsArray.push_back(llvm::json::Value(std::move(operatorObject)));
+
+    layerObject["operators"] = llvm::json::Value(std::move(operatorsArray));
+
+    return std::move(layerObject);
+  }
+
   llvm::json::Array emitJSONConnections() {
     llvm::json::Array connectionsArray;
 
