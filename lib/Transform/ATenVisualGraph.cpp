@@ -858,6 +858,8 @@ private:
   llvm::json::Array emitJSONLayers() {
     llvm::json::Array layersArray;
 
+    layersArray.push_back(emitEntryLayer());
+
     for (auto const &layer_pair : layerByContainer) {
       llvm::json::Object layerObject;
       llvm::json::Object propertyObject;
@@ -910,14 +912,11 @@ private:
     return layersArray;
   }
 
-  llvm::json::Object emitJSONLayers() {
+  llvm::json::Object emitEntryLayer() {
     llvm::json::Object layerObject;
     llvm::json::Object propertyObject;
     llvm::json::Array propertiesArray;
     llvm::json::Array operatorsArray;
-
-
-    int layer_ops_count = layer_ops.size();
 
     propertyObject["name"] = "Operator Count";
     propertyObject["tooltip"] =
@@ -930,24 +929,25 @@ private:
 
     propertiesArray.push_back(llvm::json::Value(std::move(propertyObject)));
     layerObject["properties"] = llvm::json::Value(std::move(propertiesArray));
-      llvm::json::Object operatorObject;
-      auto op_id_str = opToName[op].first;
+    llvm::json::Object operatorObject;
 
-      operatorObject["id"] = "inputOp";
-      operatorObject["name"] = "inputOp";
-      operatorObject["operator_type"] = "inputOp";
+    operatorObject["id"] = 0;
+    operatorObject["name"] = "inputOp";
 
-      auto propertiesArray = fillProperties(op);
-      operatorObject["properties"] = llvm::json::Value(llvm::json::Array());
+    llvm::json::Array portsArray;
+    llvm::json::Object portObject;
 
-      auto portsArray = emitJSONLayerOpPorts(op);
-      operatorObject["ports"] = llvm::json::Value(std::move(portsArray));
+    portObject["id"] = "0";
+    portObject["name"] = "out_0";
+    portObject["direction"] = "out";
 
-      operatorsArray.push_back(llvm::json::Value(std::move(operatorObject)));
+    portsArray.push_back(llvm::json::Value(std::move(portObject)));
+    operatorObject["ports"] = llvm::json::Value(std::move(portsArray));
 
+    operatorsArray.push_back(llvm::json::Value(std::move(operatorObject)));
     layerObject["operators"] = llvm::json::Value(std::move(operatorsArray));
 
-    return std::move(layerObject);
+    return layerObject;
   }
 
   llvm::json::Array emitJSONConnections() {
@@ -1060,10 +1060,12 @@ public:
 
     clearAllDataStructures();
 
-    unsigned currentOp = 0;
+    // Initialize Id to 1 such that we can use Id 0 for the entry node
+    unsigned currentOp = 1;
 
     // todo rename, this is properly a connection ID
-    unsigned currPortId = 0;
+    // Initialize Id to 1 such that we can use Id 0 for the entry node
+    unsigned currPortId = 1;
     forward.walk([&](Operation *op) {
       if (!opIsValid(op)) {
         return;
