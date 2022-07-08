@@ -39,6 +39,13 @@
 	    ]		
 	},
 	{
+		"name" : "linalg.pooling_nchw_max",
+		"properties" : [
+            ["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+            ["Attributes.stride", "Value of strides", "string"]
+        ]
+	},
+	{
 	    "name" : "torch.aten.leaky_relu",
 	    "properties" : [
 		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
