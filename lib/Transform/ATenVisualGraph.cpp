@@ -11,6 +11,7 @@
 
 #include "xten/Transform/ATenVisualGraph.h"
 #include "PassDetail.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
 #include "xten/Util/Util.h"
@@ -1093,6 +1094,17 @@ public:
         }
 
         if (auto argOp = argOp_ref.getDefiningOp()) {
+          // vectorValidArgOps will filter out FusedOp. We need the last
+          // operator within the fused op to be able to connect it properly.
+          if (auto fusedOp = dyn_cast<linalg::FusedOp>(argOp)) {
+            Operation *fusedTerminator = fusedOp.body().front().getTerminator();
+            assert(isa<linalg::YieldOp>(fusedTerminator) &&
+                   "Expected terminator of FusedOp to be YieldOp");
+            // The terminator is a yield operator. Use the yield argument to get
+            // the actual operation we're interested in
+            argOp = fusedTerminator->getOperand(0).getDefiningOp();
+          }
+
           auto vectorArgOps = vectorValidArgOps(argOp, op);
           for (auto argOp : vectorArgOps) {
             // where Op accepts ArgOp as input  <===> Op(%ArgOp, ...)
