@@ -515,6 +515,10 @@
 	{
 	    "name" : "xten.globalaveragepool2d",
 	    "properties" : []
+	},
+	{
+	    "name" : "torch.aten.avg_pool2d",
+	    "properties" : []
 	}
     ]    
 }
