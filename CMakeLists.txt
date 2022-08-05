@@ -100,8 +100,8 @@ add_definitions(${LLVM_DEFINITIONS})
 add_custom_target(check-all)
 
 # Make sure we build the docs
-add_custom_target(docs ALL)
-add_dependencies(docs mlir-doc)
+#add_custom_target(docs ALL)
+#add_dependencies(docs mlir-doc)
 
 add_subdirectory(include)
 add_subdirectory(lib)
