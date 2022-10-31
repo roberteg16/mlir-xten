@@ -294,11 +294,10 @@ public:
 
   void runOnOperation() override {
     // TODO: no need to use a module pass here - a func pass would be ideal.
-    auto module = getOperation();
-    auto fwdFn = module.lookupSymbol<func::FuncOp>("forward");
+    auto fwdFn = getOperation();
     mlir::Region &body = fwdFn.getBody();
     if (!body.hasOneBlock()) {
-      fwdFn.emitError("'forward' function has complex control flow, aborting");
+      fwdFn.emitError("function has complex control flow, aborting");
       signalPassFailure();
       return;
     }
@@ -309,7 +308,7 @@ public:
     // function arguments.
     Operation *returnStmt = body.begin()->getTerminator();
     if (!isa<func::ReturnOp>(returnStmt)) {
-      fwdFn.emitError("'forward' function is not terminated by a return stmt");
+      returnStmt->emitError("function is not terminated by a return stmt");
       signalPassFailure();
       return;
     }
@@ -326,7 +325,7 @@ public:
     auto prevFwdIt = opToInfo.find(currFn);
     if (prevFwdIt == opToInfo.end()) {
       returnStmt->emitError(
-          "'forward' function is not reached from the return stmt");
+          "function entry is not reached from the return stmt");
       signalPassFailure();
       return;
     }
@@ -364,7 +363,8 @@ private:
 
 namespace xilinx::xten {
 
-std::unique_ptr<OperationPass<ModuleOp>> createXTenMinimizeLiveTensorsPass() {
+std::unique_ptr<OperationPass<func::FuncOp>>
+createXTenMinimizeLiveTensorsPass() {
   return std::make_unique<XTenMinimizeLiveTensorsPass>();
 }
 

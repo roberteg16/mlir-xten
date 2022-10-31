@@ -34,7 +34,7 @@ def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
   let constructor = "xilinx::xten::createLowerToLibATenPass()";
 }
 
-def XTenMinimizeLiveTensors : Pass<"xten-minimize-live", "ModuleOp"> {
+def XTenMinimizeLiveTensors : Pass<"xten-minimize-live", "func::FuncOp"> {
   let summary = "reorder xten operations to minimize the total size of the live tensors";
   let constructor = "xilinx::xten::createXTenMinimizeLiveTensorsPass()";
 }

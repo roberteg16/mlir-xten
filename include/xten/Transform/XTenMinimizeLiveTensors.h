@@ -14,12 +14,12 @@
 #include <memory>
 #include "mlir/Pass/Pass.h"
 
-namespace xilinx {
-namespace xten {
+namespace mlir::func {
+class FuncOp;
+} // namespace mlir::func
 
-std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createXTenMinimizeLiveTensorsPass();
-
-} // namespace xten
-} // namespace xilinx
+namespace xilinx::xten {
+std::unique_ptr<mlir::OperationPass<mlir::func::FuncOp>> createXTenMinimizeLiveTensorsPass();
+} // namespace xilinx::xten
 
 #endif // XTenMinimizeLiveTensors_PASS_H
