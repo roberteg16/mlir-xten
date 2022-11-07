@@ -63,11 +63,11 @@ struct OpInfo {
   SmallVector<Value> const results;
   /// The value that will share memory with the result during execution, if any.
   Optional<Value> const sharesResultMemory = {};
-  /// Cumulative sizes of the FM tensors.
-  OpSizes sizes = {};
   /// The consumers of any results. Note: this is filled progressively while
   /// collecting the operations.
   SmallVector<Operation *> consumers;
+  /// Cumulative sizes of the FM tensors.
+  OpSizes sizes = {};
   /// The preferred order of producers of the operands. Note: this is filled
   /// by post-analysis of the branching information.
   SmallVector<Operation *> orderedProducers;
@@ -76,18 +76,26 @@ struct OpInfo {
 };
 
 /// HARDCODED returns the operand that will share memory with the result.
-Optional<Value> sharesMemoryWithResult(Operation *op) {
+bool isConvAddChained(Operation *op) {
   if (isa<xilinx::xten::Conv2dTensorAddOp>(op))
-    return {op->getOperands().back()};
+    return true;
   if (isa<xilinx::xten::Conv2dTensorAddReLUOp>(op))
-    return {op->getOperands().back()};
+    return true;
   if (isa<xilinx::xten::Conv2dTensorAddLReLUOp>(op))
-    return {op->getOperands().back()};
+    return true;
   if (isa<xilinx::xten::Conv2dTensorAddGlobalAveragePoolOp>(op))
-    return {op->getOperands().back()};
+    return true;
   if (isa<xilinx::xten::Conv2dTensorAddReLUGlobalAveragePoolOp>(op))
-    return {op->getOperands().back()};
+    return true;
   if (isa<xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op))
+    return true;
+
+  return false;
+}
+
+/// HARDCODED returns the operand that will share memory with the result.
+Optional<Value> sharesMemoryWithResult(Operation *op) {
+  if (isConvAddChained(op))
     return {op->getOperands().back()};
 
   return {};
@@ -109,17 +117,7 @@ SmallVector<Value> getFmOperands(Operation *op) {
     return op->getOperands();
   if (isa<xilinx::xten::MMOp>(op))
     return op->getOperands();
-  if (isa<xilinx::xten::Conv2dTensorAddOp>(op))
-    return {op->getOperands().front(), op->getOperands().back()};
-  if (isa<xilinx::xten::Conv2dTensorAddReLUOp>(op))
-    return {op->getOperands().front(), op->getOperands().back()};
-  if (isa<xilinx::xten::Conv2dTensorAddLReLUOp>(op))
-    return {op->getOperands().front(), op->getOperands().back()};
-  if (isa<xilinx::xten::Conv2dTensorAddGlobalAveragePoolOp>(op))
-    return {op->getOperands().front(), op->getOperands().back()};
-  if (isa<xilinx::xten::Conv2dTensorAddReLUGlobalAveragePoolOp>(op))
-    return {op->getOperands().front(), op->getOperands().back()};
-  if (isa<xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op))
+  if (isConvAddChained(op))
     return {op->getOperands().front(), op->getOperands().back()};
 
   // TODO: there is no guarantee that FM is only the 1st operand. It
@@ -148,6 +146,21 @@ std::string toStr(SmallVector<Operation *> const &vec) {
   for (auto *op : vec)
     str += std::string(::getName(op)) + " ";
   return str + ")";
+}
+
+/// Determine the in/out/running L2 memory needed per Fwd.
+void setOpSizes(OpInfo &opInfo) {
+  size_t outgoing = 0;
+  for_each(opInfo.results,
+            [&outgoing](Value val) { outgoing += getSize(val); });
+  opInfo.sizes.results = outgoing;
+  size_t incoming = 0;
+  for_each(opInfo.operands,
+            [&incoming](Value val) { incoming += getSize(val); });
+  opInfo.sizes.operands = incoming;
+  opInfo.sizes.running = incoming;
+  if (!opInfo.sharesResultMemory)
+    opInfo.sizes.running += outgoing;
 }
 
 class XTenMinimizeLiveTensorsPass
@@ -190,26 +203,9 @@ public:
                      .sharesResultMemory = sharesResultMemory,
                      .consumers = {opInfo.op}};
       auto [opFwdIt, succeeded] = opToInfo.emplace(defOp, std::move(info));
-
+      setOpSizes(opFwdIt->second);
       // Recursively collect details of the operands of this operand.
       collectOperandInfo(opFwdIt->second);
-    }
-  }
-
-  /// Determine the in/out/running L2 memory needed per Fwd.
-  void setFwdSizes() {
-    for (auto &[op, info] : opToInfo) {
-      size_t outgoing = 0;
-      for_each(info.results,
-               [&outgoing](Value val) { outgoing += getSize(val); });
-      info.sizes.results = outgoing;
-      size_t incoming = 0;
-      for_each(info.operands,
-               [&incoming](Value val) { incoming += getSize(val); });
-      info.sizes.operands = incoming;
-      info.sizes.running = incoming;
-      if (!info.sharesResultMemory)
-        info.sizes.running += outgoing;
     }
   }
 
@@ -293,7 +289,6 @@ public:
   }
 
   void runOnOperation() override {
-    // TODO: no need to use a module pass here - a func pass would be ideal.
     auto fwdFn = getOperation();
     mlir::Region &body = fwdFn.getBody();
     if (!body.hasOneBlock()) {
@@ -307,11 +302,8 @@ public:
     // return and is successful when all FMs are ultimately produced from the
     // function arguments.
     Operation *returnStmt = body.begin()->getTerminator();
-    if (!isa<func::ReturnOp>(returnStmt)) {
-      returnStmt->emitError("function is not terminated by a return stmt");
-      signalPassFailure();
-      return;
-    }
+    assert(isa<func::ReturnOp>(returnStmt) &&
+           "A function must terminate with a return stmt");
     SmallVector<Value> const retVal = returnStmt->getOperands();
     OpInfo fwdInfo = {.op = returnStmt, .operands = retVal, .results = {}};
     auto [opFwdIt, succeeded] =
@@ -319,8 +311,6 @@ public:
     OpInfo const &retFwd = opFwdIt->second;
 
     collectOperandInfo(retFwd);
-
-    setFwdSizes();
 
     auto prevFwdIt = opToInfo.find(currFn);
     if (prevFwdIt == opToInfo.end()) {
