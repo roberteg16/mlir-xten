@@ -51,7 +51,43 @@ struct BranchRunning {
   size_t lastResults = 0;
   /// The last op in this branch.
   Operation *lastOp;
+  /// The branch this is contained within.
+  BranchRunning *branchingFrom = nullptr;
 };
+
+/// Returns the closest common branch that reaches aBranch and bBranch.
+///
+/// Note this may be aBranch or bBranch. A nullptr represents the root branch.
+BranchRunning *findCommonBranch(BranchRunning *aBranch, BranchRunning *bBranch) {
+  // Aside: if we had dominance information, this would be an O(1) operation.
+  BranchRunning *bBranchingFrom = bBranch;
+  while(bBranchingFrom != nullptr) {
+    BranchRunning *aBranchingFrom = aBranch;
+    while(aBranchingFrom != nullptr) {
+      if (aBranchingFrom != bBranchingFrom)
+        return bBranchingFrom;
+      aBranchingFrom = aBranchingFrom->branchingFrom;
+    }
+    bBranchingFrom = bBranchingFrom->branchingFrom;
+  }
+  return nullptr;
+}
+
+/// Returns the max running size for ops in (*baseBranch, branch]
+///
+/// Note baseBranch is not allowed to refer to branch.
+/// A nullptr represents the root branch.
+size_t maxRunningSize(BranchRunning &branch, BranchRunning *baseBranch) {
+  assert(baseBranch != &branch);
+
+  size_t runningSize = branch.maxRunning;
+  BranchRunning *branchingFrom = branch.branchingFrom;
+  while(branchingFrom != nullptr && branchingFrom != baseBranch) {
+    runningSize = std::max(runningSize, branchingFrom->maxRunning);
+    branchingFrom = branchingFrom->branchingFrom;
+  }
+  return runningSize;
+}
 
 /// Various analysis results about an operation.
 struct OpInfo {
@@ -231,43 +267,57 @@ public:
       opInfo = &opToInfo.at(opInfo->consumers.front());
     }
 
-    // At a joining point - collect this branch and proceed iff all incoming
-    // branches have been collected.
-    SmallVector<BranchRunning> branches;
-    for (Value val : opInfo->operands) {
-      Operation *op = val.getDefiningOp();
-      if (op == nullptr)
-        op = currFn; // BlockArgument stand-in.
-
-      auto opIt = completed.find(op);
-      if (opIt == completed.end())
-        return; // Another producer needs to complete first.
-      branches.push_back(opIt->second);
-    }
-
-    std::sort(branches.begin(), branches.end(),
-              [](BranchRunning &aBranch, BranchRunning &bBranch) -> bool {
-                return (aBranch.maxRunning - aBranch.lastResults) >
-                       (bBranch.maxRunning - bBranch.lastResults);
-              });
-    opInfo->orderedProducers.clear();
-    for (BranchRunning const &branch : branches)
-      opInfo->orderedProducers.push_back(branch.lastOp);
-
-    // Complete the brInfo for this operation.
+    // Once here we have a branch and/or join operation.
     size_t maxRunning = opInfo->sizes.running;
-    for (BranchRunning const &branch : branches)
-      maxRunning = std::max(maxRunning, branch.maxRunning);
-    brInfo.maxRunning = maxRunning;
+
+    if (opInfo->operands.size() >= 2) {
+      // At a joining point - collect this branch and proceed iff all incoming
+      // branches have been collected.
+      SmallVector<BranchRunning> incomingBranches;
+      for (Value val : opInfo->operands) {
+        Operation *op = val.getDefiningOp();
+        if (op == nullptr)
+          op = currFn; // BlockArgument stand-in.
+
+        auto opIt = completed.find(op);
+        if (opIt == completed.end())
+          return; // Another producer needs to complete first.
+        incomingBranches.push_back(opIt->second);
+      }
+
+      BranchRunning *commonFrom = &incomingBranches.front();
+      for (BranchRunning &branch : incomingBranches)
+        commonFrom = findCommonBranch(commonFrom, &branch);
+      std::sort(incomingBranches.begin(), incomingBranches.end(),
+                [commonFrom](BranchRunning &aBranch, BranchRunning &bBranch) -> bool {
+                  if (commonFrom == &aBranch)
+                    return false;
+                  if (commonFrom == &bBranch)
+                    return true;
+                  return (maxRunningSize(aBranch, commonFrom) - aBranch.lastResults) >
+                        (maxRunningSize(bBranch, commonFrom) - bBranch.lastResults);
+                });
+      opInfo->orderedProducers.clear();
+      for (BranchRunning const &branch : incomingBranches)
+        opInfo->orderedProducers.push_back(branch.lastOp);
+
+      // The maxRunning for this operation should include all the incoming branches.
+      for (BranchRunning &branch : incomingBranches)
+        maxRunning = std::max(maxRunning, maxRunningSize(branch, commonFrom));
+    }
+    brInfo.maxRunning = std::max(brInfo.maxRunning, maxRunning);
     brInfo.lastResults = opInfo->sizes.results;
     brInfo.lastOp = opInfo->op;
     completed.insert({opInfo->op, brInfo});
 
     // Continue to all consumers.
     for (Operation *consumer : opInfo->consumers) {
-      BranchRunning nextRunning{.maxRunning = maxRunning,
+      // Set up a local branch info for the branch towards this consumer.
+      BranchRunning nextRunning{.maxRunning = 0,
                                 .lastResults = opInfo->sizes.results,
-                                .lastOp = opInfo->op};
+                                .lastOp = opInfo->op,
+                                .branchingFrom = &brInfo};
+      
       determineBranchRunning(&opToInfo.at(consumer), nextRunning, completed);
     }
     assert(opInfo->orderedProducers.size() == opInfo->operands.size());
