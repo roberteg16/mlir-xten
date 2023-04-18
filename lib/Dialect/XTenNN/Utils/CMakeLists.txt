@@ -5,7 +5,13 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_subdirectory(IR)
-add_subdirectory(Interfaces)
-add_subdirectory(Transforms)
-add_subdirectory(Utils)
+add_mlir_dialect_library(XTenNNUtils
+  SubgraphBuilder.cpp
+
+  DEPENDS
+  XTenNNIncGen
+
+  LINK_LIBS PUBLIC
+  MLIRIR
+  XTenNNDialect
+)
