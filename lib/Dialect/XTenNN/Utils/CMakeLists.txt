@@ -8,6 +8,9 @@
 add_mlir_dialect_library(XTenNNUtils
   SubgraphBuilder.cpp
 
+  ADDITIONAL_HEADER_DIRS
+  ${XTEN_SOURCE_DIR}/include/xten/Dialect/XTenNN/Utils
+
   DEPENDS
   XTenNNIncGen
 

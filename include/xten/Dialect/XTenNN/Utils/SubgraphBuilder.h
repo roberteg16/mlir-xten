@@ -23,7 +23,7 @@
 
 namespace amd::xten_nn {
 
-amd::xten_nn::SubgraphOp
+SubgraphOp
 createSubgraphOp(mlir::PatternRewriter &rewriter,
                  const llvm::SmallVector<mlir::Operation *> &operations);
 

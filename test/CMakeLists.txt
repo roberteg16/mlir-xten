@@ -25,3 +25,5 @@ set_target_properties(check-aten PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
 add_dependencies(check-xten-all check-aten)
+
+add_subdirectory(lib)

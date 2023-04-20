@@ -20,7 +20,6 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace amd::xten_nn;
 
 /// Fills \b uses with all(nested) operands of \b op that are not provided by
 /// \b root.
@@ -64,9 +63,10 @@ static void collectUses(Operation *root, Operation *op,
 /// operations is the target operation whose results need to be returned. The
 /// results are returned using an Yield operation. The target operation is
 /// replaced with the created subgraph.
-amd::xten_nn::SubgraphOp
-createSubgraphOp(PatternRewriter &rewriter,
-                 const llvm::SmallVector<Operation *> &operations) {
+namespace amd::xten_nn {
+SubgraphOp createSubgraphOp(
+    PatternRewriter &rewriter,
+    const llvm::SmallVector<Operation *> &operations) {
   assert(!operations.empty() &&
          "There should be at least one operation to create the subgraph.");
 
@@ -114,3 +114,5 @@ createSubgraphOp(PatternRewriter &rewriter,
 
   return subgraph;
 }
+
+} // namespace amd::xten_nn
