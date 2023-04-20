@@ -95,7 +95,7 @@ struct TestSubgraphBuilderPass
     target.addLegalDialect<mlir::func::FuncDialect>();
     target.addLegalDialect<amd::xten_nn::XTenNNDialect>();
 
-    // An ONNX operation is only legal if it is wrapped by a linalg::subgraphOp.
+    // A TOSA operation is only legal if it is wrapped by a linalg::subgraphOp.
     target.addDynamicallyLegalDialect<tosa::TosaDialect>([&](Operation *op) {
       return llvm::isa<amd::xten_nn::SubgraphOp>(op->getParentOp());
     });
