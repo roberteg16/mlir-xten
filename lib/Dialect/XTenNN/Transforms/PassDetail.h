@@ -1,4 +1,4 @@
-//===- Passes.h -------------------------------------------------*- C++ -*-===//
+//===- PassDetail.h ---------------------------------------------*- C++ -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -8,17 +8,16 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Declares the XTenNN pass entry points.
+// Private include for pass implementations.
 //
 //===----------------------------------------------------------------------===//
 
 #pragma once
 
-#include "xten/Dialect/XTenNN/Transforms/Simplify.h"
-#include "xten/Dialect/XTenNN/Transforms/CanonicalizePass.h"
+#include "xten/Dialect/XTenNN/Transforms/XTenNNPasses.h"
 
 namespace amd::xten_nn {
-#define GEN_PASS_REGISTRATION
-#include "xten/Dialect/XTenNN/Transforms/Passes.h.inc"
+#define GEN_PASS_CLASSES
+#include "xten/Dialect/XTenNN/Transforms/XTenNNPasses.h.inc"
 
 } // namespace amd::xten_nn
