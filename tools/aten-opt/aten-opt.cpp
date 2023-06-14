@@ -65,6 +65,5 @@ int main(int argc, char **argv) {
                   torch::TorchConversion::TorchConversionDialect>();
 
   return mlir::asMainReturnCode(
-      MlirOptMain(argc, argv, "MLIR modular optimizer driver\n", registry,
-                  /*preloadDialectsInContext=*/false));
+      MlirOptMain(argc, argv, "MLIR modular optimizer driver\n", registry));
 }
