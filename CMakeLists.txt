@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 # (c) Copyright 2021 Xilinx Inc.
+# (c) Copyright 2023 Advanced Micro Devices, Inc.
 
 cmake_minimum_required(VERSION 3.10)
 
@@ -28,8 +29,6 @@ project(mlir-xten LANGUAGES CXX C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
-
-message(STATUS "mlir-xten CMAKELISTS")
 
 function(TORCH_MLIR_detect_pybind11_install)
   if(pybind11_DIR)
@@ -117,12 +116,14 @@ link_directories(${PROJECT_BINARY_DIR}/../aie/lib/)
 
 add_definitions(${LLVM_DEFINITIONS})
 
-add_custom_target(check-xten-all)
+# Create a general check-all command to run both lit and unittests
+# Collects all lit tests between the begin and end function
+umbrella_lit_testsuite_begin(check-xten-all)
 
 # Make sure we build the docs
-if(${LLVM_BUILD_DOCS})
-  add_custom_target(docs ALL)
-  add_dependencies(docs mlir-doc)
+if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+add_custom_target(docs ALL)
+add_dependencies(docs mlir-doc)
 endif()
 
 add_subdirectory(include)
@@ -130,3 +131,5 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(python)
 add_subdirectory(test)
+
+umbrella_lit_testsuite_end(check-xten-all)
