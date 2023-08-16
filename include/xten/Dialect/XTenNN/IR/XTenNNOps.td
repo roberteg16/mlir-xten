@@ -34,8 +34,7 @@ class XTenNN_Op<string mnemonic, list<Trait> traits = []>
 //===----------------------------------------------------------------------===//
 
 def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
-            DeclareOpInterfaceMethods<InferShapedTypeOpInterface,
-                              ["inferReturnTypeComponents"]>,
+            DeclareOpInterfaceMethods<InferShapedTypeOpInterface,["inferReturnTypeComponents"]>,
             SingleBlockImplicitTerminator<"OutputOp">,
             XTenNN_EnclaveOp,
             IsolatedFromAbove,
@@ -100,6 +99,7 @@ def XTenNN_OutputOp : XTenNN_Op<"output", [
 
 
 def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
+            DeclareOpInterfaceMethods<InferShapedTypeOpInterface,["inferReturnTypeComponents"]>,
             Elementwise,
             Pure,
             SameOperandsAndResultShape]> {
@@ -129,6 +129,7 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
 }
 
 def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
+            DeclareOpInterfaceMethods<InferShapedTypeOpInterface,["inferReturnTypeComponents"]>,
             Elementwise,
             Pure,
             SameOperandsAndResultShape]> {

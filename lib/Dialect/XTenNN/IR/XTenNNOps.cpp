@@ -198,6 +198,36 @@ LogicalResult SubgraphOp::inferReturnTypeComponents(
   return success();
 }
 
+LogicalResult QuantizeOp::inferReturnTypeComponents(
+    MLIRContext *context, ::std::optional<Location> /*location*/,
+    ValueShapeRange operands, DictionaryAttr /*attributes*/,
+    OpaqueProperties /*properties*/, RegionRange /*regions*/,
+    SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
+
+  auto type = llvm::dyn_cast<ShapedType>(operands.front().getType());
+  if (!type || !type.hasStaticShape())
+    return failure();
+
+  auto i8Type = IntegerType::get(context, 8);
+  inferredReturnShapes.push_back(type.clone(i8Type));
+  return success();
+}
+
+LogicalResult DequantizeOp::inferReturnTypeComponents(
+    MLIRContext *context, ::std::optional<Location> /*location*/,
+    ValueShapeRange operands, DictionaryAttr /*attributes*/,
+    OpaqueProperties /*properties*/, RegionRange /*regions*/,
+    SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
+
+  auto type = llvm::dyn_cast<ShapedType>(operands.front().getType());
+  if (!type || !type.hasStaticShape())
+    return failure();
+
+  auto f32Type = FloatType::getF32(context);
+  inferredReturnShapes.push_back(type.clone(f32Type));
+  return success();
+}
+
 //===----------------------------------------------------------------------===//
 // XTenNNDialect
 //===----------------------------------------------------------------------===//
