@@ -1,0 +1,6 @@
+mlir_gen_iface(DLNN EnclaveOpInterface op)
+mlir_gen_iface(DLNN GraphInterface op)
+mlir_gen_iface(DLNN NodeInterface op)
+mlir_gen_iface(DLNN ScalarInterface type)
+mlir_gen_iface(DLNN VolumeInterface type)
+mlir_gen_iface(DLNN VolumeOpInterface op)
