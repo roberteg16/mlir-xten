@@ -425,6 +425,8 @@ public:
 
   void runOnOperation() override {
     auto fwdFn = getOperation();
+    if (fwdFn->hasAttr("kernel_interface"))
+      return;
     mlir::Region &body = fwdFn.getBody();
     if (!body.hasOneBlock()) {
       fwdFn.emitError("function has complex control flow, aborting");
